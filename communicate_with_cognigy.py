@@ -5,9 +5,13 @@ import playsound
 from gtts import gTTS
 import speech_recognition as sr
 import os
+from dotenv import load_dotenv
 
 def send_message_to_cognigy(message_text, session_id):
-    response = requests.post('https://endpoint-trial.cognigy.ai/70788815608734c377059faba978ea86118bdbf6def151e0664772c4cb529067', 
+    
+    endpoint = os.getenv('ENDPOINT')
+
+    response = requests.post(endpoint, 
         json={
             'userId':'userId',
             'sessionId': session_id,
@@ -39,6 +43,7 @@ def get_audio():
     return said
 
 if __name__ == '__main__':
+    load_dotenv()
     session_id = datetime.datetime.now().isoformat()
     # print ('Communicate with Cognigy by writing your message.')
     speak ('Hi.')
