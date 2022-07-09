@@ -1,3 +1,4 @@
 .env
 voice.mp3
 output/*.wav
+output/*.mp3

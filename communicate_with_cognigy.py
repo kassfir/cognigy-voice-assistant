@@ -8,9 +8,11 @@ import os
 from dotenv import load_dotenv
 from pydub import AudioSegment
 from tqdm import tqdm
+import pygame
 
 session_id = datetime.datetime.now().isoformat()
 user_id='user'
+FOLDER_PATH = os.path.abspath('.')
 
 def send_message_to_cognigy(message_text, session_id, user_id):
     
@@ -26,7 +28,6 @@ def send_message_to_cognigy(message_text, session_id, user_id):
     )
 
     response_content = json.loads(response.content)
-
     response_text_array = []
 
     for output in response_content['outputStack']:
@@ -38,7 +39,8 @@ def send_message_to_cognigy(message_text, session_id, user_id):
         if output['data']['type'] == 'quickReplies':
             response_text_array.append(output['data']['text'][0])
             continue
-
+    
+    print (f'Cognigy response: {response_text_array}')
     return response_text_array
 
 #Taken from https://www.thepythoncode.com/article/concatenate-audio-files-in-python
@@ -78,11 +80,14 @@ def concatenate_audio_pydub(audio_clip_paths, output_path, verbose=1):
     final_clip.export(output_path, format=final_clip_extension)
 
 
-def text_to_speech(text):
+def text_to_speech(text, filename='voice.mp3'):
+    print(f'Saying: {text}')
     tts = gTTS(text=text, lang='en')
-    filename = os.path.abspath('voice.mp3')
+    filename = FOLDER_PATH + f'/output/{filename}'
     tts.save(filename)
     playsound.playsound(filename)
+
+    return filename
 
 def multiple_text_to_speech(text_array):
 
@@ -90,21 +95,16 @@ def multiple_text_to_speech(text_array):
     temp_files = []
 
     for text in text_array:
-        tts = gTTS(text=text, lang='en')
-        filename = os.path.abspath(f'{index}.mp3')
-        tts.save(filename)
+        filename = text_to_speech(text, filename=f'{index}.mp3')
+        
         temp_files.append(filename)
         index += 1
     
-    print (temp_files)
-    output_path = os.path.abspath('output.mp3')
-    concatenate_audio_pydub(temp_files, output_path)
-
-    playsound.playsound(output_path)
 
 # Read for more background on different choices of using STT in Py
 # https://www.thepythoncode.com/article/using-speech-recognition-to-convert-speech-to-text-python
-def speech_to_text():
+def speech_to_text(retry_on_no_result=True, retry_count=0):
+    print('Listening...')
     r = sr.Recognizer()
     
     with sr.Microphone() as source:
@@ -112,27 +112,23 @@ def speech_to_text():
         said = ''
         try:
             said = r.recognize_google(audio)
-            print(said) 
+            print(f'Heard: {said}') 
             
         except sr.UnknownValueError as e:
             print('I didn\'t understand what you\'re saying. Try speaking closer to the microphone, talk more clearly, or tweak the language settings.\nError message:' + str(e))  
+            if retry_on_no_result:
+                speech_to_text(retry_count=retry_count+1) 
 
         except sr.WaitTimeoutError as e: 
-            print('Timeout has been reached. \nError message:' + str(e))  
+            print('Timeout has been reached. \nError message:' + str(e)) 
 
     return said
 
+
+
+
 if __name__ == '__main__':
     load_dotenv()
-
-    concatenate_audio_pydub([
-            'C:\\Users\\kaspars.eglitis\\OneDrive - Accenture\\training\\Python\\220706 cognigy voice assistant\\0.mp3', 
-            'C:\\Users\\kaspars.eglitis\\OneDrive - Accenture\\training\\Python\\220706 cognigy voice assistant\\1.mp3', 
-            'C:\\Users\\kaspars.eglitis\\OneDrive - Accenture\\training\\Python\\220706 cognigy voice assistant\\2.mp3'
-        ], 
-        'C:\\Users\\kaspars.eglitis\\OneDrive - Accenture\\training\\Python\\220706 cognigy voice assistant\\output.mp3',
-        verbose=0)
-
 
     print ('Conversation initiated. Say "stop" or press ctrl + C to end conversation.')
     text_to_speech ('Hi.')
@@ -142,6 +138,7 @@ if __name__ == '__main__':
 
         if 'stop' in user_input:
             print ('Goodbye!')
+            text_to_speech ('Goodbye!')
             break
 
         response_text_array = send_message_to_cognigy(user_input, session_id, user_id)
