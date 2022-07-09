@@ -125,13 +125,11 @@ def speech_to_text(retry_on_no_result=True, retry_count=0):
     return said
 
 
-
-
-if __name__ == '__main__':
-    load_dotenv()
-
+def enter_listening_loop(greeting_message=None):
     print ('Conversation initiated. Say "stop" or press ctrl + C to end conversation.')
-    text_to_speech ('Hi.')
+
+    if not greeting_message == None:
+        text_to_speech(greeting_message)
 
     while True: 
         user_input = speech_to_text()
@@ -147,6 +145,9 @@ if __name__ == '__main__':
 
         multiple_text_to_speech(response_text_array)
 
+if __name__ == '__main__':
+    load_dotenv()
+    enter_listening_loop(greeting_message='Hi.')
         
 
 
